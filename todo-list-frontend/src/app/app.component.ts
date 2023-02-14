@@ -1,7 +1,6 @@
 import {Component} from '@angular/core';
 import {Todo, TodoService} from "./todo.service";
-import {combineLatest, from, Observable, of, Subject} from "rxjs";
-import {switchMap} from "rxjs/operators";
+import {combineLatest, Subject} from "rxjs";
 
 @Component({
   selector: 'app-root',
