@@ -1,6 +1,7 @@
 import {Component} from '@angular/core';
 import {Todo, TodoService} from "./todo.service";
-import {combineLatest, Observable, Subject} from "rxjs";
+import {combineLatest, from, Observable, of, Subject} from "rxjs";
+import {switchMap} from "rxjs/operators";
 
 @Component({
   selector: 'app-root',
@@ -13,29 +14,36 @@ import {combineLatest, Observable, Subject} from "rxjs";
     <div class="list">
       <label for="search">Search...</label>
       <input id="search" type="text" [ngModel]="searchSubject | async" (ngModelChange)="updateSearchSubject($event)">
-      <app-progress-bar *ngIf="!(todos$ | async)"></app-progress-bar>
-      <app-todo-item *ngFor="let todo of todoSubject | async " [item]="todo"></app-todo-item>
+      <app-progress-bar *ngIf="!(todoSubject | async)"></app-progress-bar>
+      <app-todo-item *ngFor="let todo of filteredTodoSubject | async " [item]="todo"
+                     (click)="removeItem(todo)"></app-todo-item>
     </div>
   `,
   styleUrls: ['app.component.scss']
 })
 export class AppComponent {
 
-  readonly todos$: Observable<Todo[]>;
   todoSubject: Subject<Todo[]> = new Subject<Todo[]>();
+  filteredTodoSubject: Subject<Todo[]> = new Subject<Todo[]>();
   searchSubject: Subject<string> = new Subject<string>();
   searchPattern: string = '';
 
-  constructor(todoService: TodoService) {
-    this.todos$ = todoService.getAll();
-    this.todos$.subscribe(todos => this.todoSubject.next(todos.filter(todo => todo.task.includes(this.searchPattern))))
-    combineLatest(this.todos$, this.searchSubject).subscribe(([todos, searchPattern]) => {
-      this.todoSubject.next(todos.filter(todo => todo.task.includes(searchPattern)))
+  constructor(private todoService: TodoService) {
+    todoService.getAll().subscribe(todos => this.todoSubject.next(todos))
+    this.todoSubject.subscribe(todos => this.filteredTodoSubject.next(todos.filter(todo => todo.task.includes(this.searchPattern))))
+    combineLatest(this.todoSubject, this.searchSubject).subscribe(([todos, searchPattern]) => {
+      this.filteredTodoSubject.next(todos.filter(todo => todo.task.includes(searchPattern)))
     });
   }
 
   updateSearchSubject(searchPattern: string) {
     this.searchPattern = searchPattern;
     this.searchSubject.next(searchPattern);
+  }
+
+  removeItem(item: Todo) {
+    this.todoService.remove(item.id).subscribe(
+        () => this.todoService.getAll().subscribe(todos => this.todoSubject.next(todos)),
+        error => console.log('An error occurred during the deletion of task "' + item.task + '".'));
   }
 }
