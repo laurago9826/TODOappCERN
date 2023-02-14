@@ -17,6 +17,7 @@ export class TodoItemComponent {
 
   @Input() item!: Todo;
 
+
   get color() {
     switch (this.item.priority) {
       case 1:
